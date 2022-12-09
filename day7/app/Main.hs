@@ -7,19 +7,24 @@ import           Text.Read                      ( readMaybe )
 
 
 filename :: String
-filename = "input1.txt"
+filename = "test.txt"
 
 main :: IO ()
 main = do
     input <- readFile filename
-    let fLines     = parseFile input
-        dMap       = maybe M.empty processInput fLines
-        sizes      = map (findSize dMap) (M.keys dMap)
+    let fLines = parseFile input
+        dMap   = maybe M.empty processInput fLines
+        sizes  = map (findSize dMap) (M.keys dMap)
+        sizes' = M.elems $ sizeMap $ foldl' findSizeC
+                                            (emptySizeState dMap)
+                                            (M.keys dMap)
         sum1       = sum $ filter (< 100000) sizes
         totSize    = 70000000
         targetSize = 30000000
         toFreeSize = max 0 targetSize - (totSize - maximum sizes)
         delSize    = minimum $ filter (>= toFreeSize) sizes
+    print sizes
+    print sizes'
     putStrLn $ "Sum of sizes of directories with size < 100000 = " ++ show sum1
     putStrLn
         $  "Size of minimum sized directory to delete to free at least "
@@ -106,3 +111,30 @@ findSize mp pt =
         sz (DirectoryListing name) = findSize mp (pt ++ [name])
         sz (FileListing _ sz'    ) = sz'
     in  sum $ map sz lst
+
+
+type SizeMap = M.Map Path Int
+data SizeState = SizeState
+    { sDirMap :: DirMap
+    , sizeMap :: SizeMap
+    }
+
+emptySizeState :: DirMap -> SizeState
+emptySizeState dm = SizeState { sDirMap = dm, sizeMap = M.empty }
+
+findSizeC' :: SizeState -> Path -> (SizeState, Int)
+findSizeC' st pt =
+    let
+        lst = sDirMap st M.! pt
+        sz st' (DirectoryListing name) = findSizeC' st' (pt ++ [name])
+        sz st' (FileListing _ sz'    ) = (st', sz')
+        acc (st', vals) l =
+            let (st'', val) = sz st' l in (st'', vals ++ [val])
+        (st', sizes) = foldl' acc (st, []) lst
+        size         = sum sizes
+        st''         = st' { sizeMap = M.insert pt size (sizeMap st') }
+    in
+        (st'', sum sizes)
+
+findSizeC :: SizeState -> Path -> SizeState
+findSizeC st pt = fst $ findSizeC' st pt
