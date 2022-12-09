@@ -10,4 +10,5 @@ This repo contains my attempts of Advent of Code 2022.
 - **Day 4**: Java
 - **Day 5**: Zig
 - **Day 6**: Go
+- **Day 7**: Haskell
 - **Day 8**: Zig
